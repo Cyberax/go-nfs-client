@@ -95,7 +95,7 @@ enum nfsstat4 {
      NFS4ERR_NO_GRACE        = 10033,/* reclaim outside of grace*/
      NFS4ERR_RECLAIM_BAD     = 10034,/* reclaim error at server */
      NFS4ERR_RECLAIM_CONFLICT = 10035,/* conflict on reclaim    */
-     NFS4ERR_BADZDR          = 10036,/* ZDR decode failed       */
+     NFS4ERR_BADXDR          = 10036,/* XDR decode failed       */
      NFS4ERR_LOCKS_HELD      = 10037,/* file locks held at CLOSE*/
      NFS4ERR_OPENMODE        = 10038,/* conflict in OPEN and I/O*/
      NFS4ERR_BADOWNER        = 10039,/* owner translation bad   */
