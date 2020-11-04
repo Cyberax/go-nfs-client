@@ -14,7 +14,7 @@ import (
 	"time"
 )
 
-const NumScaleThreads = 20
+const NumScaleThreads = 40
 const UploadSize = 1024*1024*5
 const UploadTarget = 1024*1024*1024*5
 
@@ -204,6 +204,13 @@ func runScale(server, rootPath string) error {
 	data := make([]byte, UploadSize)
 	_, _ = rand.Read(data)
 
+	testWriteScaling(nfsClients, rootPath, data)
+	testReadScaling(nfsClients, rootPath, data)
+
+	return nil
+}
+
+func testWriteScaling(nfsClients []nfs4.NfsInterface, rootPath string, data []byte) {
 	// Now run the scale test - upload files in multiple threads until we
 	// reach the desired number of uploads
 	infoMtx := sync.Mutex{}
@@ -213,13 +220,13 @@ func runScale(server, rootPath string) error {
 
 	var count int32
 	wait := sync.WaitGroup{}
-	println("Running the test threads")
+	println("Running the upload test. Threads =", NumScaleThreads)
 	for _, c := range nfsClients {
 		wait.Add(1)
 		go func(c nfs4.NfsInterface) {
 			defer wait.Done()
-			for ;!doneUploading; {
-				nm := fmt.Sprintf(rootPath + "scale/test-%d", atomic.AddInt32(&count, 1))
+			for ; !doneUploading; {
+				nm := fmt.Sprintf(rootPath+"scale/test-%d", atomic.AddInt32(&count, 1))
 				n, err := c.ReWriteFile(nm, bytes.NewReader(data))
 				if err != nil {
 					println("Error: ", err.Error())
@@ -232,7 +239,7 @@ func runScale(server, rootPath string) error {
 					if !doneUploading {
 						doneUploading = true
 						ms := time.Now().Sub(start).Milliseconds()
-						rate :=  (float64(curUploaded)*1000.0/float64(ms))/1024/1024
+						rate := (float64(curUploaded) * 1000.0 / float64(ms)) / 1024 / 1024
 						println("Uploaded bytes: ", curUploaded, ", time(ms): ", ms,
 							" rate (MB/s): ", int64(rate))
 					}
@@ -242,8 +249,56 @@ func runScale(server, rootPath string) error {
 		}(c)
 	}
 	wait.Wait()
+}
 
-	return nil
+func testReadScaling(nfsClients []nfs4.NfsInterface, rootPath string, data []byte) {
+	// Now run the scale test - upload files in multiple threads until we
+	// reach the desired number of uploads
+	infoMtx := sync.Mutex{}
+	downloadedBytes := uint64(0)
+	done := false
+	start := time.Now()
+
+	var count int32
+	wait := sync.WaitGroup{}
+	println("Running the read test. Threads =", NumScaleThreads)
+	for _, c := range nfsClients {
+		wait.Add(1)
+		go func(c nfs4.NfsInterface) {
+			defer wait.Done()
+			for ; !done; {
+				nm := fmt.Sprintf(rootPath+"scale/test-%d", atomic.AddInt32(&count, 1))
+				reader := bytes.NewBufferString("")
+				n, err := c.ReadFileAll(nm, reader)
+				if err != nil {
+					println("Error: ", err.Error())
+					done = true
+				}
+				resBytes := reader.Bytes()
+				for i := 0; i < len(data); i++ {
+					if data[i] != resBytes[i] {
+						println("Data mismatch")
+						done = true
+						break
+					}
+				}
+
+				curDownloaded := atomic.AddUint64(&downloadedBytes, n)
+				if curDownloaded > UploadTarget {
+					infoMtx.Lock()
+					if !done {
+						done = true
+						ms := time.Now().Sub(start).Milliseconds()
+						rate := (float64(curDownloaded) * 1000.0 / float64(ms)) / 1024 / 1024
+						println("Downloaded bytes: ", curDownloaded, ", time(ms): ", ms,
+							" rate (MB/s): ", int64(rate))
+					}
+					infoMtx.Unlock()
+				}
+			}
+		}(c)
+	}
+	wait.Wait()
 }
 
 func main() {
