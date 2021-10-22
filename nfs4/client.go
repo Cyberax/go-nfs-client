@@ -7,7 +7,7 @@ import (
 	"encoding/binary"
 	"encoding/hex"
 	"fmt"
-	. "github.com/aurorasolar/go-nfs-client/internal"
+	. "github.com/Cyberax/go-nfs-client/internal"
 	"io"
 	"math"
 	"net"

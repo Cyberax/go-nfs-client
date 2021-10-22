@@ -10,10 +10,10 @@ func TestMsg(t *testing.T) {
 	args := COMPOUND4args{
 		Tag:          Utf8str_cs("hello"),
 		Minorversion: 123,
-		Argarray:     []Nfs_argop4{
+		Argarray: []Nfs_argop4{
 			{
 				Argop: OP_PUTFH,
-				_u:    PUTFH4res{},
+				U:     PUTFH4res{},
 			},
 		},
 	}
@@ -22,7 +22,7 @@ func TestMsg(t *testing.T) {
 	XdrOut{Out: buffer}.Marshal("", &args)
 	byteRes := buffer.Bytes()
 
-	proc := xdrProc_NFSPROC4_COMPOUND{}
+	proc := XdrProc_NFSPROC4_COMPOUND{}
 	XdrIn{In: bytes.NewReader(byteRes)}.Marshal("", proc.GetArg())
 	cmpRes := proc.GetArg().(*COMPOUND4args)
 	assert.Equal(t, "hello", string(cmpRes.Tag))

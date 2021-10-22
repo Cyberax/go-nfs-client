@@ -1,4 +1,4 @@
-module github.com/aurorasolar/go-nfs-client
+module github.com/Cyberax/go-nfs-client
 
 go 1.15
 
